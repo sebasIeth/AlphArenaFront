@@ -150,6 +150,17 @@ export default function Footer() {
               </h4>
               <ul className="space-y-2.5">
                 <li>
+                  <Link
+                    href="/whitepaper"
+                    className="group flex items-center gap-2.5 text-sm text-arena-muted hover:text-arena-primary transition-colors duration-200"
+                  >
+                    <span className="text-arena-muted-light group-hover:text-arena-primary transition-colors duration-200">
+                      <IconBook />
+                    </span>
+                    Whitepaper
+                  </Link>
+                </li>
+                <li>
                   <a
                     href="#"
                     className="group flex items-center gap-2.5 text-sm text-arena-muted hover:text-arena-primary transition-colors duration-200"
