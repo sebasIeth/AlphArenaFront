@@ -13,7 +13,18 @@
       "Bash(git checkout:*)",
       "Bash(npm run build:*)",
       "Bash(node:*)",
-      "Bash(npx next build:*)"
+      "Bash(npx next build:*)",
+      "Bash(git pull:*)",
+      "Bash(grep:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebSearch",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:linear.app)",
+      "WebFetch(domain:blog.logrocket.com)",
+      "WebFetch(domain:vercel.com)"
     ]
   }
 }

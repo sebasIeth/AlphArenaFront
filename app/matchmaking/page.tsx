@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n";
 import AuthGuard from "@/components/AuthGuard";
-import Card, { CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { Select } from "@/components/ui/Input";
 import Input from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
 import { PageSpinner } from "@/components/ui/Spinner";
@@ -15,6 +13,7 @@ import { formatElo } from "@/lib/utils";
 import type { Agent, QueueStatus } from "@/lib/types";
 import type { Socket } from "socket.io-client";
 
+/* ── Types ── */
 interface QueuedAgent {
   agentId: string;
   status: QueueStatus | null;
@@ -27,103 +26,139 @@ interface CountdownAgent {
   eloAtStart?: number;
 }
 
-/* ── Pulsing ring used while waiting in queue ── */
-function PulseRing() {
+/* ── Inline SVG Icons ── */
+function IconSwords({ className = "w-6 h-6" }: { className?: string }) {
   return (
-    <div className="relative w-16 h-16 mx-auto">
-      <div className="absolute inset-0 rounded-full bg-arena-primary/10 animate-ping" />
-      <div className="absolute inset-2 rounded-full bg-arena-primary/20 animate-pulse" />
-      <div className="absolute inset-4 rounded-full bg-arena-primary/30" />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-4 h-4 rounded-full bg-arena-primary animate-pulse" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.5 17.5L3 6V3h3l11.5 11.5" />
+      <path d="M13 19l6-6" />
+      <path d="M16 16l4 4" />
+      <path d="M19 21l2-2" />
+      <path d="M9.5 6.5L21 18v3h-3L6.5 9.5" />
+      <path d="M11 5l-6 6" />
+      <path d="M8 8L4 4" />
+      <path d="M5 3L3 5" />
+    </svg>
+  );
+}
+
+function IconBolt({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+    </svg>
+  );
+}
+
+function IconDice({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="3" />
+      <circle cx="8" cy="8" r="1.2" fill="currentColor" />
+      <circle cx="16" cy="8" r="1.2" fill="currentColor" />
+      <circle cx="8" cy="16" r="1.2" fill="currentColor" />
+      <circle cx="16" cy="16" r="1.2" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+    </svg>
+  );
+}
+
+function IconChevronDown({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+function IconX({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+/* ── Radar Search Animation (replaces PulseRing) ── */
+function RadarSearch({ name }: { name?: string }) {
+  const initial = (name || "?")[0].toUpperCase();
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative w-28 h-28">
+        {/* Expanding rings */}
+        <div className="mm-radar-ring" />
+        <div className="mm-radar-ring" />
+        <div className="mm-radar-ring" />
+        {/* Orbiting dots */}
+        <div className="mm-orbit-dot" />
+        <div className="mm-orbit-dot" />
+        {/* Center agent avatar */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-arena-primary to-arena-primary-dark flex items-center justify-center shadow-lg shadow-arena-primary/20">
+            <span className="text-white font-display font-bold text-xl">{initial}</span>
+          </div>
+        </div>
       </div>
+      <span className="text-sm text-arena-muted font-medium mm-ellipsis">
+        Searching for opponent
+      </span>
     </div>
   );
 }
 
-/* ── Countdown ring (conic gradient) ── */
-function CountdownRing({
-  seconds,
-  total,
-}: {
-  seconds: number;
-  total: number;
-}) {
+/* ── Enhanced Countdown Ring ── */
+function CountdownRing({ seconds, total }: { seconds: number; total: number }) {
   const pct = Math.round((seconds / total) * 100);
   const circumference = 2 * Math.PI * 45;
   return (
-    <div className="relative w-28 h-28 mx-auto">
-      <svg
-        className="w-28 h-28 transform -rotate-90"
-        viewBox="0 0 100 100"
-      >
+    <div className="relative w-32 h-32 mx-auto">
+      <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+        <defs>
+          <linearGradient id="countdownGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#5B4FCF" />
+            <stop offset="100%" stopColor="#E8A500" />
+          </linearGradient>
+          <filter id="countdownGlow">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(91,79,207,0.1)" strokeWidth="5" />
         <circle
-          cx="50"
-          cy="50"
-          r="45"
-          fill="none"
-          stroke="#D4D0C8"
-          strokeWidth="5"
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r="45"
-          fill="none"
-          stroke="#5B4FCF"
+          cx="50" cy="50" r="45" fill="none"
+          stroke="url(#countdownGrad)"
           strokeWidth="5"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - pct / 100)}
           strokeLinecap="round"
+          filter="url(#countdownGlow)"
           className="transition-all duration-1000 ease-linear"
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-bold font-mono text-arena-primary tabular-nums">
+        <span className="text-4xl font-bold font-mono text-arena-primary tabular-nums glass-stat-number">
           {seconds}
         </span>
-        <span className="text-[10px] text-arena-muted uppercase tracking-widest">
-          sec
-        </span>
+        <span className="text-[10px] text-arena-muted uppercase tracking-widest font-mono">sec</span>
       </div>
     </div>
   );
 }
 
-/* ── Stat mini card ── */
-function StatBox({
-  label,
-  value,
-  accent,
-  delay,
-  subtitle,
-}: {
-  label: string;
-  value: string;
-  accent?: string;
-  delay: number;
-  subtitle?: string;
-}) {
+/* ── Agent Avatar ── */
+function AgentAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
+  const s = size === "sm" ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm";
   return (
-    <div
-      className="bg-white border border-arena-border-light rounded-xl px-5 py-4 shadow-arena-sm opacity-0 animate-fade-up"
-      style={{ animationDelay: `${delay}s` }}
-    >
-      <div className="text-[10px] text-arena-muted uppercase tracking-wider font-mono mb-1">
-        {label}
-      </div>
-      <div
-        className={`text-2xl font-bold font-mono tabular-nums ${accent || "text-arena-text"}`}
-      >
-        {value}
-      </div>
-      {subtitle && (
-        <div className="text-xs text-arena-muted mt-0.5">{subtitle}</div>
-      )}
+    <div className={`${s} rounded-lg bg-gradient-to-br from-arena-primary to-arena-primary-dark flex items-center justify-center flex-shrink-0`}>
+      <span className="text-white font-bold font-display">{name[0]?.toUpperCase() || "?"}</span>
     </div>
   );
 }
 
+/* ── Main Content ── */
 function MatchmakingContent() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
@@ -140,6 +175,10 @@ function MatchmakingContent() {
   const [gameType] = useState("marrakech");
   const [joining, setJoining] = useState(false);
 
+  // Custom selector
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const selectorRef = useRef<HTMLDivElement>(null);
+
   // Queue state
   const [queuedAgents, setQueuedAgents] = useState<QueuedAgent[]>([]);
   const [queueSize, setQueueSize] = useState<number | null>(null);
@@ -154,6 +193,19 @@ function MatchmakingContent() {
   const socketRef = useRef<Socket | null>(null);
   const queuedAgentIdsRef = useRef<Set<string>>(new Set());
 
+  // Close selector on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (selectorRef.current && !selectorRef.current.contains(e.target as Node)) {
+        setSelectorOpen(false);
+      }
+    }
+    if (selectorOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [selectorOpen]);
+
   // Fetch agents
   useEffect(() => {
     async function fetchAgents() {
@@ -161,9 +213,7 @@ function MatchmakingContent() {
         const data = await api.getAgents();
         setAgents(data.agents || []);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : t.matchmaking.joinFailed
-        );
+        setError(err instanceof Error ? err.message : t.matchmaking.joinFailed);
       } finally {
         setLoading(false);
       }
@@ -201,11 +251,8 @@ function MatchmakingContent() {
 
       if (type === "matchmaking:countdown") {
         const remainingMs = data.remainingMs ?? data.remaining ?? 0;
-        const agentsList: CountdownAgent[] = Array.isArray(data.agents)
-          ? data.agents
-          : [];
+        const agentsList: CountdownAgent[] = Array.isArray(data.agents) ? data.agents : [];
         const seconds = Math.ceil(remainingMs / 1000);
-
         if (seconds > 0) {
           setCountdownActive(true);
           setCountdownSeconds(seconds);
@@ -218,16 +265,10 @@ function MatchmakingContent() {
 
       if (type === "matchmaking:matched") {
         const matchId = data.matchId;
-        const matchedAgentIds: string[] = Array.isArray(data.agents)
-          ? data.agents
-          : [];
-
+        const matchedAgentIds: string[] = Array.isArray(data.agents) ? data.agents : [];
         if (!matchId) return;
-
-        // Check if any of MY queued agents are in this match
         const myIds = queuedAgentIdsRef.current;
         const myAgentMatched = matchedAgentIds.some((id) => myIds.has(id));
-
         if (myAgentMatched) {
           router.push(`/matches/${matchId}`);
         }
@@ -321,17 +362,11 @@ function MatchmakingContent() {
       queuedAgentIdsRef.current.add(selectedAgentId);
       setQueuedAgents((prev) => [
         ...prev,
-        {
-          agentId: selectedAgentId,
-          status: { status: "queued" },
-          cancelling: false,
-        },
+        { agentId: selectedAgentId, status: { status: "queued" }, cancelling: false },
       ]);
       setSelectedAgentId("");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : t.matchmaking.joinFailed
-      );
+      setError(err instanceof Error ? err.message : t.matchmaking.joinFailed);
     } finally {
       setJoining(false);
     }
@@ -339,112 +374,127 @@ function MatchmakingContent() {
 
   const handleCancel = async (agentId: string) => {
     setQueuedAgents((prev) =>
-      prev.map((qa) =>
-        qa.agentId === agentId ? { ...qa, cancelling: true } : qa
-      )
+      prev.map((qa) => (qa.agentId === agentId ? { ...qa, cancelling: true } : qa))
     );
     try {
       await api.cancelQueue(agentId);
       queuedAgentIdsRef.current.delete(agentId);
-      setQueuedAgents((prev) =>
-        prev.filter((qa) => qa.agentId !== agentId)
-      );
+      setQueuedAgents((prev) => prev.filter((qa) => qa.agentId !== agentId));
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : t.matchmaking.cancelFailed
-      );
+      setError(err instanceof Error ? err.message : t.matchmaking.cancelFailed);
       setQueuedAgents((prev) =>
-        prev.map((qa) =>
-          qa.agentId === agentId ? { ...qa, cancelling: false } : qa
-        )
+        prev.map((qa) => (qa.agentId === agentId ? { ...qa, cancelling: false } : qa))
       );
     }
   };
 
   const queuedIds = new Set(queuedAgents.map((qa) => qa.agentId));
-  const availableAgents = agents.filter(
-    (a) => a.status === "idle" && !queuedIds.has(a.id)
-  );
+  const availableAgents = agents.filter((a) => a.status === "idle" && !queuedIds.has(a.id));
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId);
 
   if (loading) return <PageSpinner />;
 
   return (
-    <div className="page-container">
-      <div className="max-w-2xl mx-auto">
+    <div className="page-container relative min-h-[80vh]">
+      {/* Ambient background glow */}
+      <div className="mm-ambient" />
+
+      <div className="max-w-2xl mx-auto relative z-10">
+
         {/* ── Page Header ── */}
-        <div
-          className="bg-gradient-to-r from-arena-primary/[0.06] via-transparent to-arena-accent/[0.04] rounded-2xl border border-arena-border-light p-6 sm:p-8 mb-8 opacity-0 animate-fade-up"
-        >
-          <h1 className="text-2xl sm:text-3xl font-display font-bold text-arena-text mb-2">
+        <div className="text-center mb-10 opacity-0 animate-fade-up">
+          {/* Swords icon with glow */}
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-arena-primary/10 to-arena-accent/10 border border-arena-primary/20 mb-5 animate-glow-pulse">
+            <IconSwords className="w-8 h-8 text-arena-primary" />
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl font-display font-bold bg-gradient-to-r from-arena-primary via-arena-primary-light to-arena-accent bg-clip-text text-transparent mb-3">
             {t.matchmaking.title}
           </h1>
-          <p className="text-arena-muted leading-relaxed">
+          <p className="text-arena-muted leading-relaxed max-w-md mx-auto">
             {t.matchmaking.subtitle}
           </p>
         </div>
 
         {error && (
-          <div className="bg-arena-danger/10 border border-arena-danger/30 text-arena-danger rounded-xl px-4 py-3 text-sm mb-6 animate-fade-down">
+          <div className="bg-arena-danger/10 border border-arena-danger/30 text-arena-danger rounded-xl px-4 py-3 text-sm mb-6 animate-fade-down flex items-center gap-2">
+            <IconX className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         )}
 
         {/* ── Queue Stats ── */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <StatBox
-            label={t.matchmaking.currentQueue}
-            value={queueSize !== null ? String(queueSize) : "-"}
-            accent="text-arena-primary"
-            delay={0.1}
-            subtitle={t.matchmaking.agentsWaiting}
-          />
-          <StatBox
-            label={t.common.gameType}
-            value={gameType.charAt(0).toUpperCase() + gameType.slice(1)}
-            delay={0.15}
-          />
+        <div className="grid grid-cols-2 gap-5 mb-8">
+          {/* Queue Size */}
+          <div
+            className="glass-panel mm-gradient-border rounded-xl px-5 py-5 opacity-0 animate-fade-up"
+            style={{ animationDelay: "0.1s" }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-2 h-2 rounded-full bg-arena-success live-dot" />
+              <span className="stat-label stat-label-success">{t.matchmaking.currentQueue}</span>
+            </div>
+            <div className="text-3xl font-bold font-mono tabular-nums text-arena-primary glass-stat-number">
+              {queueSize !== null ? queueSize : "—"}
+            </div>
+            <div className="text-xs text-arena-muted mt-1">{t.matchmaking.agentsWaiting}</div>
+          </div>
+
+          {/* Game Type */}
+          <div
+            className="glass-panel mm-gradient-border rounded-xl px-5 py-5 opacity-0 animate-fade-up"
+            style={{ animationDelay: "0.15s" }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="stat-label">{t.common.gameType}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-arena-accent/15 to-arena-accent/5 border border-arena-accent/20 flex items-center justify-center animate-float" style={{ animationDuration: "5s" }}>
+                <IconDice className="w-5 h-5 text-arena-accent" />
+              </div>
+              <div>
+                <div className="text-lg font-display font-bold text-arena-text capitalize">
+                  {gameType}
+                </div>
+                <div className="text-xs text-arena-muted">Board Game</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* ── Backend Countdown ── */}
         {countdownActive && (
-          <div
-            className="bg-white border-2 border-arena-primary/40 rounded-2xl p-6 sm:p-8 mb-8 shadow-arena-lg opacity-0 animate-scale-in relative overflow-hidden"
-          >
-            {/* Subtle glow background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-arena-primary/[0.03] via-transparent to-arena-accent/[0.02] pointer-events-none" />
+          <div className="glass-panel-strong mm-gradient-border rounded-2xl p-6 sm:p-8 mb-8 opacity-0 animate-scale-in relative overflow-hidden">
+            {/* Glow bg */}
+            <div className="absolute inset-0 bg-gradient-to-br from-arena-primary/[0.04] via-transparent to-arena-accent/[0.03] pointer-events-none" />
 
             <div className="relative text-center">
               <div className="mb-5">
-                <CountdownRing
-                  seconds={countdownSeconds}
-                  total={COUNTDOWN_TOTAL}
-                />
+                <CountdownRing seconds={countdownSeconds} total={COUNTDOWN_TOTAL} />
               </div>
 
-              <h2 className="text-lg font-display font-bold text-arena-text mb-1">
+              <h2 className="text-xl font-display font-bold text-arena-text mb-1 animate-pulse">
                 Match Starting Soon
               </h2>
               <p className="text-sm text-arena-muted mb-1">
                 Waiting{" "}
-                <span className="text-arena-primary font-semibold font-mono">
-                  {countdownSeconds}s
-                </span>{" "}
-                for more agents to join...
+                <span className="text-arena-primary font-semibold font-mono">{countdownSeconds}s</span>
+                {" "}for more agents to join...
               </p>
               <p className="text-xs text-arena-muted/70 mb-5">
                 The match will start automatically when the countdown ends.
               </p>
 
               {countdownAgents.length > 0 && (
-                <div className="pt-4 border-t border-arena-border-light/60">
-                  <p className="text-[10px] text-arena-muted uppercase tracking-widest font-mono mb-3">
+                <div className="pt-4 border-t border-arena-border-light/40">
+                  <p className="stat-label mb-3">
                     Agents Ready ({countdownAgents.length})
                   </p>
                   <div className="flex flex-wrap justify-center gap-2">
                     {countdownAgents.map((ca) => (
                       <div
                         key={ca.agentId}
-                        className="bg-arena-bg border border-arena-border-light rounded-lg px-3 py-1.5 flex items-center gap-2"
+                        className="glass-panel rounded-lg px-3 py-1.5 flex items-center gap-2"
                       >
                         <div className="w-2 h-2 rounded-full bg-arena-success animate-pulse" />
                         <span className="text-sm text-arena-text font-medium">
@@ -464,26 +514,28 @@ function MatchmakingContent() {
           </div>
         )}
 
-        {/* ── Queued Agents ── */}
+        {/* ── Queued Agents (Searching State) ── */}
         {queuedAgents.map((qa, i) => {
           const agentInfo = agents.find((a) => a.id === qa.agentId);
           return (
             <div
               key={qa.agentId}
-              className="bg-white border border-arena-primary/30 rounded-2xl p-6 mb-6 shadow-arena opacity-0 animate-fade-up relative overflow-hidden"
+              className="glass-panel-strong mm-gradient-border rounded-2xl p-6 sm:p-8 mb-6 opacity-0 animate-fade-up relative overflow-hidden"
               style={{ animationDelay: `${0.1 + i * 0.08}s` }}
             >
-              {/* Animated side accent */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-arena-primary via-arena-primary-light to-arena-primary rounded-l-2xl" />
+              {/* Gradient side accent */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-arena-primary via-arena-accent to-arena-primary rounded-l-2xl" />
 
-              <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-                <PulseRing />
+              <div className="flex flex-col items-center gap-6">
+                {/* Radar animation */}
+                <RadarSearch name={agentInfo?.name} />
 
-                <div className="flex-1 text-center sm:text-left">
+                {/* Agent info */}
+                <div className="text-center w-full">
                   <h3 className="text-lg font-display font-bold text-arena-text mb-1">
                     {t.matchmaking.inQueue}
                   </h3>
-                  <p className="text-sm text-arena-muted mb-2">
+                  <p className="text-sm text-arena-muted mb-3">
                     {t.matchmaking.agentLabel}{" "}
                     <span className="text-arena-text font-semibold">
                       {agentInfo?.name || qa.agentId}
@@ -495,15 +547,12 @@ function MatchmakingContent() {
                     )}
                   </p>
 
-                  <div className="flex items-center gap-3 justify-center sm:justify-start mb-3">
+                  {/* Status + position */}
+                  <div className="flex items-center gap-3 justify-center mb-4">
                     {qa.status && (
                       <>
                         <Badge
-                          status={
-                            qa.status.status ||
-                            qa.status.agentStatus ||
-                            "queued"
-                          }
+                          status={qa.status.status || qa.status.agentStatus || "queued"}
                         />
                         {qa.status.position !== undefined && (
                           <span className="text-xs text-arena-muted font-mono">
@@ -514,18 +563,32 @@ function MatchmakingContent() {
                     )}
                   </div>
 
-                  <p className="text-xs text-arena-muted/70">
+                  {/* Agent stats chips */}
+                  {agentInfo && (
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-arena-success/10 text-arena-success text-xs font-medium">
+                        {agentInfo.stats?.wins || 0}W
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-arena-danger/10 text-arena-danger text-xs font-medium">
+                        {agentInfo.stats?.losses || 0}L
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-arena-muted/10 text-arena-muted text-xs font-medium">
+                        {agentInfo.stats?.draws || 0}D
+                      </span>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-arena-muted/70 mb-4">
                     {t.matchmaking.waitingMsg}
                   </p>
-                </div>
 
-                <div className="shrink-0 text-center sm:text-right">
                   <Button
                     variant="danger"
                     size="sm"
                     onClick={() => handleCancel(qa.agentId)}
                     isLoading={qa.cancelling}
                   >
+                    <IconX className="w-3.5 h-3.5" />
                     {t.matchmaking.cancelQueue}
                   </Button>
                 </div>
@@ -536,120 +599,204 @@ function MatchmakingContent() {
 
         {/* ── Join Form ── */}
         <div
-          className="bg-white border border-arena-border-light rounded-2xl shadow-arena-sm overflow-hidden opacity-0 animate-fade-up"
+          className="glass-panel glass-panel-highlight rounded-2xl overflow-hidden opacity-0 animate-fade-up"
           style={{ animationDelay: "0.2s" }}
         >
           {/* Form header */}
-          <div className="px-6 py-4 border-b border-arena-border-light/60 bg-arena-bg/30">
-            <h2 className="text-lg font-display font-semibold text-arena-text">
+          <div className="px-6 py-4 border-b border-arena-border-light/40 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-arena-primary/10 to-arena-accent/10 border border-arena-primary/20 flex items-center justify-center">
+              <IconSwords className="w-4 h-4 text-arena-primary" />
+            </div>
+            <h2 className="text-lg font-display font-bold text-arena-text">
               {t.matchmaking.joinQueue}
             </h2>
           </div>
 
           <div className="p-6">
             {availableAgents.length === 0 && queuedAgents.length === 0 ? (
-              <div className="text-center py-10">
-                <div className="text-4xl mb-4 animate-float inline-block">
-                  &#129302;
+              /* ── Empty state ── */
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-arena-primary/10 to-arena-accent/10 border border-arena-primary/15 mb-5 animate-float">
+                  <IconSwords className="w-8 h-8 text-arena-primary/60" />
                 </div>
                 <p className="text-arena-muted mb-6 max-w-sm mx-auto leading-relaxed">
                   {t.matchmaking.noIdleAgents}
                 </p>
                 <a href="/agents/new">
-                  <Button variant="secondary" size="lg">
+                  <button className="mm-glow-btn bg-gradient-to-r from-arena-primary to-arena-primary-dark text-white rounded-xl px-6 py-3 font-semibold text-sm inline-flex items-center gap-2 transition-all">
+                    <IconBolt className="w-4 h-4" />
                     {t.matchmaking.createAgent}
-                  </Button>
+                  </button>
                 </a>
               </div>
             ) : availableAgents.length === 0 ? (
               <div className="text-center py-10">
-                <p className="text-arena-muted">
-                  {t.matchmaking.noIdleAgents}
-                </p>
+                <p className="text-arena-muted">{t.matchmaking.noIdleAgents}</p>
               </div>
             ) : (
               <div className="space-y-5">
-                {/* Agent selector */}
-                <Select
-                  label={t.matchmaking.selectAgent}
-                  value={selectedAgentId}
-                  onChange={(e) => setSelectedAgentId(e.target.value)}
-                >
-                  <option value="">{t.matchmaking.chooseAgent}</option>
-                  {availableAgents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name} ({t.common.elo}:{" "}
-                      {Math.round(agent.elo || 0)})
-                    </option>
-                  ))}
-                </Select>
-
-                {/* Selected agent preview */}
-                {selectedAgentId && (() => {
-                  const sel = agents.find((a) => a.id === selectedAgentId);
-                  if (!sel) return null;
-                  const wins = sel.stats?.wins || 0;
-                  const losses = sel.stats?.losses || 0;
-                  const draws = sel.stats?.draws || 0;
-                  return (
-                    <div className="bg-arena-bg/50 border border-arena-border-light rounded-xl p-4 flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-arena-text">
-                            {sel.name}
-                          </span>
-                          <Badge status={sel.status} />
+                {/* ── Custom Agent Selector ── */}
+                <div>
+                  <label className="block text-sm font-medium text-arena-text mb-1.5">
+                    {t.matchmaking.selectAgent}
+                  </label>
+                  <div className="relative" ref={selectorRef}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectorOpen((o) => !o)}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-arena-border-light bg-white/80 backdrop-blur-sm hover:border-arena-primary/30 transition-colors text-left"
+                    >
+                      {selectedAgent ? (
+                        <div className="flex items-center gap-3 min-w-0">
+                          <AgentAvatar name={selectedAgent.name} size="sm" />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-arena-text text-sm truncate">
+                              {selectedAgent.name}
+                            </div>
+                            <div className="text-xs text-arena-muted font-mono">
+                              ELO {formatElo(selectedAgent.elo)}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-arena-muted">
-                          <span className="text-arena-success font-medium">
-                            {wins}W
-                          </span>
-                          <span className="text-arena-danger/80 font-medium">
-                            {losses}L
-                          </span>
-                          <span>{draws}D</span>
+                      ) : (
+                        <span className="text-arena-muted text-sm">{t.matchmaking.chooseAgent}</span>
+                      )}
+                      <IconChevronDown
+                        className={`w-4 h-4 text-arena-muted transition-transform duration-200 flex-shrink-0 ${selectorOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+
+                    {/* Dropdown */}
+                    {selectorOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 z-50 glass-panel-strong rounded-xl border border-arena-border-light shadow-arena-lg overflow-hidden">
+                        <div className="max-h-60 overflow-y-auto py-1">
+                          {availableAgents.map((agent) => {
+                            const wins = agent.stats?.wins || 0;
+                            const losses = agent.stats?.losses || 0;
+                            const draws = agent.stats?.draws || 0;
+                            const isSelected = agent.id === selectedAgentId;
+                            return (
+                              <button
+                                key={agent.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedAgentId(agent.id);
+                                  setSelectorOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                                  isSelected
+                                    ? "bg-arena-primary/5 border-l-2 border-arena-primary"
+                                    : "hover:bg-arena-primary/[0.03] border-l-2 border-transparent"
+                                }`}
+                              >
+                                <AgentAvatar name={agent.name} size="sm" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-arena-text text-sm truncate">
+                                    {agent.name}
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[11px] text-arena-muted">
+                                    <span className="text-arena-success font-medium">{wins}W</span>
+                                    <span className="text-arena-danger/80 font-medium">{losses}L</span>
+                                    <span>{draws}D</span>
+                                  </div>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  <div className="text-sm font-bold font-mono text-arena-primary tabular-nums">
+                                    {formatElo(agent.elo)}
+                                  </div>
+                                  <div className="text-[9px] text-arena-muted uppercase tracking-wider">
+                                    ELO
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold font-mono text-arena-primary tabular-nums">
-                          {formatElo(sel.elo)}
+                    )}
+                  </div>
+                </div>
+
+                {/* Selected agent preview */}
+                {selectedAgent && (() => {
+                  const wins = selectedAgent.stats?.wins || 0;
+                  const losses = selectedAgent.stats?.losses || 0;
+                  const draws = selectedAgent.stats?.draws || 0;
+                  const total = wins + losses + draws;
+                  const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+                  return (
+                    <div className="glass-panel rounded-xl p-4 relative overflow-hidden opacity-0 animate-fade-up" style={{ animationDelay: "0.05s" }}>
+                      {/* Left accent */}
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-arena-primary to-arena-accent rounded-l-xl" />
+
+                      <div className="flex items-center justify-between pl-3">
+                        <div className="flex items-center gap-3">
+                          <AgentAvatar name={selectedAgent.name} />
+                          <div>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="font-semibold text-arena-text">{selectedAgent.name}</span>
+                              <Badge status={selectedAgent.status} />
+                            </div>
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className="text-arena-success font-medium">{wins}W</span>
+                              <span className="text-arena-danger/80 font-medium">{losses}L</span>
+                              <span className="text-arena-muted">{draws}D</span>
+                              <span className="text-arena-muted">·</span>
+                              <span className="text-arena-primary font-semibold">{winRate}%</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-[10px] text-arena-muted uppercase tracking-widest">
-                          {t.common.elo}
+                        <div className="text-right">
+                          <div className="text-2xl font-bold font-mono text-arena-primary tabular-nums glass-stat-number">
+                            {formatElo(selectedAgent.elo)}
+                          </div>
+                          <div className="text-[10px] text-arena-muted uppercase tracking-widest font-mono">
+                            {t.common.elo}
+                          </div>
                         </div>
                       </div>
                     </div>
                   );
                 })()}
 
-                <Input
-                  label={t.matchmaking.stakeAmount}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={stakeAmount}
-                  onChange={(e) => setStakeAmount(e.target.value)}
-                  helperText={t.matchmaking.stakeHelper}
-                />
+                {/* Stake + Game Type row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label={t.matchmaking.stakeAmount}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={stakeAmount}
+                    onChange={(e) => setStakeAmount(e.target.value)}
+                    helperText={t.matchmaking.stakeHelper}
+                  />
 
-                <div>
-                  <label className="block text-sm font-medium text-arena-text mb-1.5">
-                    {t.common.gameType}
-                  </label>
-                  <div className="bg-arena-bg/50 border border-arena-border-light rounded-lg px-4 py-2.5 text-arena-text capitalize font-medium flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-arena-success" />
-                    {gameType}
+                  <div>
+                    <label className="block text-sm font-medium text-arena-text mb-1.5">
+                      {t.common.gameType}
+                    </label>
+                    <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-arena-border-light bg-white/80 backdrop-blur-sm">
+                      <div className="w-7 h-7 rounded-md bg-gradient-to-br from-arena-accent/15 to-arena-accent/5 flex items-center justify-center">
+                        <IconDice className="w-3.5 h-3.5 text-arena-accent" />
+                      </div>
+                      <span className="text-arena-text capitalize font-medium text-sm">{gameType}</span>
+                    </div>
                   </div>
                 </div>
 
-                <Button
+                {/* Join Button */}
+                <button
                   onClick={handleJoinQueue}
-                  isLoading={joining}
-                  className="w-full"
-                  size="lg"
+                  disabled={joining || !selectedAgentId}
+                  className="w-full mm-glow-btn bg-gradient-to-r from-arena-primary to-arena-primary-dark text-white rounded-xl py-4 text-base font-bold inline-flex items-center justify-center gap-2.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
                 >
+                  {joining ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <IconBolt className="w-5 h-5" />
+                  )}
                   {t.matchmaking.joinQueue}
-                </Button>
+                </button>
               </div>
             )}
           </div>

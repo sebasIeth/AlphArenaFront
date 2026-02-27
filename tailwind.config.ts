@@ -56,6 +56,10 @@ const config: Config = {
         "orbit": "orbit 20s linear infinite",
         "orbit-reverse": "orbitReverse 25s linear infinite",
         "pulse-soft": "pulseSoft 4s ease-in-out infinite",
+        "mesh-float": "meshFloat 12s ease-in-out infinite",
+        "glow-breath": "glowBreath 4s ease-in-out infinite",
+        "slide-in-left": "slideInLeft 0.6s ease-out forwards",
+        "fade-in-scale": "fadeInScale 0.5s ease-out forwards",
       },
       keyframes: {
         fadeIn: {
@@ -117,6 +121,24 @@ const config: Config = {
         pulseSoft: {
           "0%, 100%": { opacity: "0.4", transform: "scale(1)" },
           "50%": { opacity: "0.8", transform: "scale(1.05)" },
+        },
+        meshFloat: {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)", opacity: "0.6" },
+          "25%": { transform: "translate(20px, -30px) scale(1.05)", opacity: "0.8" },
+          "50%": { transform: "translate(-15px, 20px) scale(0.95)", opacity: "0.5" },
+          "75%": { transform: "translate(25px, 10px) scale(1.03)", opacity: "0.7" },
+        },
+        glowBreath: {
+          "0%, 100%": { boxShadow: "0 0 0 0 rgba(91, 79, 207, 0)", borderColor: "rgba(255, 255, 255, 0.1)" },
+          "50%": { boxShadow: "0 0 30px 0 rgba(91, 79, 207, 0.15)", borderColor: "rgba(91, 79, 207, 0.3)" },
+        },
+        slideInLeft: {
+          "0%": { opacity: "0", transform: "translateX(-40px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        fadeInScale: {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
         },
       },
     },

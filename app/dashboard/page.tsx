@@ -7,10 +7,8 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import { useLanguage } from "@/lib/i18n";
 import AuthGuard from "@/components/AuthGuard";
-import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import { PageSpinner } from "@/components/ui/Spinner";
 import {
   formatRelativeTime,
   formatWinRate,
@@ -20,205 +18,203 @@ import {
 import type { Agent, Match } from "@/lib/types";
 
 /* ═══════════════════════════════════════════════════════
-   SVG ICONS
+   ICONS
    ═══════════════════════════════════════════════════════ */
 function IconPlus({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-    </svg>
-  );
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>;
 }
 function IconBolt({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-    </svg>
-  );
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
 }
 function IconChart({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-  );
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
 }
 function IconStar({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-    </svg>
-  );
-}
-function IconUsers({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-    </svg>
-  );
-}
-function IconTrophy({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0116.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a18.991 18.991 0 01-4.27.492 18.99 18.99 0 01-4.27-.493" />
-    </svg>
-  );
-}
-function IconCoin({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
+  return <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>;
 }
 function IconArrowRight({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-    </svg>
-  );
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>;
 }
 function IconCheck({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </svg>
-  );
+  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>;
 }
 
 /* ═══════════════════════════════════════════════════════
    SUB-COMPONENTS
    ═══════════════════════════════════════════════════════ */
 
-/* ── Avatar with initial ── */
 function Avatar({ name, size = "w-10 h-10", textSize = "text-base", gradient = "from-arena-primary to-arena-primary-dark" }: { name: string; size?: string; textSize?: string; gradient?: string }) {
   return (
-    <div className={`${size} rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-arena-sm`}>
+    <div className={`${size} rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0`}>
       <span className={`${textSize} font-extrabold text-white`}>{name.charAt(0).toUpperCase()}</span>
     </div>
   );
 }
 
-/* ── Win Rate Ring ── */
-function WinRateRing({ rate, size = 110 }: { rate: number; size?: number }) {
+/* Animated number counter */
+function AnimatedNum({ value, duration = 1000 }: { value: number; duration?: number }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.round(eased * value));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [value, duration]);
+  return <span className="tabular-nums">{display}</span>;
+}
+
+/* Animated decimal counter */
+function AnimatedDecimal({ value, duration = 1000 }: { value: number; duration?: number }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(eased * value);
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [value, duration]);
+  return <span className="tabular-nums">{display.toFixed(2)}</span>;
+}
+
+/* Win Rate SVG Ring — with gradient stroke + glow */
+function WinRateRing({ rate, size = 80 }: { rate: number; size?: number }) {
   const pct = Math.round(rate * 100);
-  const inner = size - 14;
-  const color = pct >= 60 ? "#059669" : pct >= 40 ? "#5B4FCF" : "#DC2626";
+  const radius = (size - 10) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (pct / 100) * circumference;
+  const gradId = `wr-grad-${size}`;
+  const glowId = `wr-glow-${size}`;
+  const colorStart = pct >= 60 ? "#059669" : pct >= 40 ? "#5B4FCF" : "#DC2626";
+  const colorEnd = pct >= 60 ? "#34d399" : pct >= 40 ? "#7B6FE0" : "#f87171";
+  const textColor = pct >= 60 ? "#059669" : pct >= 40 ? "#5B4FCF" : "#DC2626";
+
   return (
-    <div
-      className="stat-ring shrink-0"
-      style={{
-        width: size,
-        height: size,
-        background: `conic-gradient(${color} ${pct * 3.6}deg, #E8E4DF ${pct * 3.6}deg)`,
-      }}
-    >
-      <div className="stat-ring-inner" style={{ width: inner, height: inner }}>
-        <div className="text-center">
-          <span className="text-2xl font-extrabold font-mono text-arena-text tabular-nums">{pct}</span>
-          <span className="text-xs text-arena-muted ml-0.5">%</span>
-        </div>
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={colorStart} />
+            <stop offset="100%" stopColor={colorEnd} />
+          </linearGradient>
+          <filter id={glowId}>
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#E8E4DF" strokeWidth={4} opacity={0.5} />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={`url(#${gradId})`} strokeWidth={5}
+          strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset}
+          filter={`url(#${glowId})`}
+          className="transition-all duration-1000 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-lg font-extrabold font-mono leading-none" style={{ color: textColor }}>{pct}</span>
+        <span className="text-[7px] font-mono text-arena-muted-light font-medium mt-0.5">%</span>
       </div>
     </div>
   );
 }
 
-/* ── Mini Win Rate Ring ── */
-function MiniRing({ rate, size = 32 }: { rate: number; size?: number }) {
-  const pct = rate * 100;
-  const color = pct >= 60 ? "#059669" : pct >= 40 ? "#5B4FCF" : "#DC2626";
-  const inner = size - 6;
-  return (
-    <div className="stat-ring shrink-0" style={{ width: size, height: size, background: `conic-gradient(${color} ${pct * 3.6}deg, #E8E4DF ${pct * 3.6}deg)` }}>
-      <div className="stat-ring-inner" style={{ width: inner, height: inner }}>
-        <span className="text-[9px] font-bold tabular-nums text-arena-text">{Math.round(pct)}</span>
-      </div>
-    </div>
-  );
-}
-
-/* ── W/L/D Horizontal Bar ── */
-function WLDBar({ wins, losses, draws, height = "h-2" }: { wins: number; losses: number; draws: number; height?: string }) {
+/* W/L/D Bar */
+function WLDBar({ wins, losses, draws, height = "h-1.5" }: { wins: number; losses: number; draws: number; height?: string }) {
   const total = wins + losses + draws;
-  if (total === 0) return <div className={`w-full ${height} rounded-full bg-arena-border-light/50`} />;
-  const wPct = (wins / total) * 100;
-  const lPct = (losses / total) * 100;
-  const dPct = (draws / total) * 100;
+  if (total === 0) return <div className={`w-full ${height} rounded-full bg-arena-border-light/30`} />;
   return (
     <div className={`w-full ${height} rounded-full overflow-hidden flex bg-arena-border-light/30`}>
-      {wPct > 0 && <div className="h-full bg-arena-success transition-all duration-700" style={{ width: `${wPct}%` }} />}
-      {dPct > 0 && <div className="h-full bg-arena-muted-light/60 transition-all duration-700" style={{ width: `${dPct}%` }} />}
-      {lPct > 0 && <div className="h-full bg-arena-danger/60 transition-all duration-700" style={{ width: `${lPct}%` }} />}
+      {wins > 0 && <div className="h-full bg-arena-success transition-all duration-700" style={{ width: `${(wins / total) * 100}%` }} />}
+      {draws > 0 && <div className="h-full bg-arena-muted-light/50 transition-all duration-700" style={{ width: `${(draws / total) * 100}%` }} />}
+      {losses > 0 && <div className="h-full bg-arena-danger/50 transition-all duration-700" style={{ width: `${(losses / total) * 100}%` }} />}
     </div>
   );
 }
 
-/* ── Stat Card with icon + accent stripe ── */
-function DashStat({ label, value, sub, icon, accentColor, delay, children }: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  icon: React.ReactNode;
-  accentColor: string;
-  delay: number;
-  children?: React.ReactNode;
-}) {
+/* Mini Ring — with gradient arc */
+function MiniRing({ rate, size = 28 }: { rate: number; size?: number }) {
+  const pct = rate * 100;
+  const r = (size - 4) / 2;
+  const circ = 2 * Math.PI * r;
+  const off = circ - (pct / 100) * circ;
+  const colorStart = pct >= 60 ? "#059669" : pct >= 40 ? "#5B4FCF" : "#DC2626";
+  const colorEnd = pct >= 60 ? "#34d399" : pct >= 40 ? "#7B6FE0" : "#f87171";
+  const gid = `mr-${size}-${Math.round(pct)}`;
   return (
-    <div className="dash-stat opacity-0 animate-fade-up" style={{ animationDelay: `${delay}s`, animationFillMode: "both" }}>
-      <div className={`dash-stat-accent ${accentColor}`} />
-      <div className="pl-3 flex items-start justify-between">
-        <div>
-          <div className="text-[10px] text-arena-muted uppercase tracking-widest font-mono mb-1.5">{label}</div>
-          <div className="flex items-end gap-1.5">
-            <span className="text-3xl font-extrabold font-mono tabular-nums text-arena-text-bright leading-none">{value}</span>
-            {sub && <span className="text-[10px] text-arena-muted font-mono tracking-wider mb-0.5">{sub}</span>}
-          </div>
-          {children}
-        </div>
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${accentColor}/10`}>
-          <div className={accentColor.replace("bg-", "text-")}>{icon}</div>
-        </div>
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <defs>
+          <linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={colorStart} />
+            <stop offset="100%" stopColor={colorEnd} />
+          </linearGradient>
+        </defs>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#E8E4DF" strokeWidth={3} opacity={0.4} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={`url(#${gid})`} strokeWidth={3}
+          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={off}
+          className="transition-all duration-700 ease-out" />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-[7px] font-bold tabular-nums text-arena-text">{Math.round(pct)}</span>
       </div>
     </div>
   );
 }
 
-/* ── Onboarding empty state ── */
-function OnboardingState({ t }: { t: any }) {
-  const steps = [
-    { num: "01", title: t.home.step1Title, desc: t.home.step1Desc, done: true },
-    { num: "02", title: t.home.step2Title, desc: t.home.step2Desc, href: "/agents/new", cta: t.dashboard.createAgent },
-    { num: "03", title: t.home.step3Title, desc: t.home.step3Desc, href: "/matchmaking", cta: t.dashboard.joinQueue },
-    { num: "04", title: t.home.step4Title, desc: t.home.step4Desc },
-  ];
+/* ELO Tier Badge — enhanced with dot indicator and stronger presence */
+function EloTier({ elo }: { elo: number }) {
+  const tier = elo >= 2000
+    ? { name: "Grandmaster", color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/25", dot: "bg-red-500" }
+    : elo >= 1800
+    ? { name: "Diamond", color: "text-cyan-500", bg: "bg-cyan-500/10", border: "border-cyan-500/25", dot: "bg-cyan-500" }
+    : elo >= 1600
+    ? { name: "Gold", color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/25", dot: "bg-amber-500" }
+    : elo >= 1400
+    ? { name: "Silver", color: "text-slate-400", bg: "bg-slate-400/10", border: "border-slate-400/25", dot: "bg-slate-400" }
+    : { name: "Bronze", color: "text-orange-600", bg: "bg-orange-600/10", border: "border-orange-600/25", dot: "bg-orange-600" };
 
   return (
-    <div className="space-y-3">
-      {steps.map((step, i) => (
-        <div
-          key={step.num}
-          className="bg-white border border-arena-border-light rounded-xl p-5 shadow-arena-sm opacity-0 animate-fade-up"
-          style={{ animationDelay: `${0.2 + i * 0.08}s`, animationFillMode: "both" }}
-        >
-          <div className="flex items-start gap-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold font-mono shrink-0 ${
-              step.done ? "bg-arena-success/15 text-arena-success" : "bg-arena-primary/10 text-arena-primary"
-            }`}>
-              {step.done ? <IconCheck /> : step.num}
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[9px] font-mono font-bold rounded-md ${tier.bg} ${tier.color} border ${tier.border} backdrop-blur-sm`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${tier.dot} shrink-0`} />
+      {tier.name}
+    </span>
+  );
+}
+
+/* Skeleton Loader — glass style */
+function DashboardSkeleton() {
+  return (
+    <>
+      <div className="dash-glass-bg" aria-hidden="true" />
+      <div className="dash-glass-viewport">
+        <div className="dash-glass-layout">
+          <aside className="dash-glass-rail animate-pulse">
+            <div className="glass-panel h-52" />
+            <div className="glass-panel h-28" />
+            <div className="glass-panel h-28" />
+            <div className="glass-panel h-24" />
+          </aside>
+          <div className="dash-glass-main animate-pulse">
+            <div className="glass-panel-strong h-40" />
+            <div className="flex gap-4 overflow-hidden">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="glass-panel h-32 w-[300px] shrink-0" />
+              ))}
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-semibold text-arena-text-bright mb-0.5">{step.title}</h4>
-              <p className="text-sm text-arena-muted leading-relaxed">{step.desc}</p>
-              {step.href && step.cta && (
-                <Link href={step.href}>
-                  <Button size="sm" className="mt-3">{step.cta}</Button>
-                </Link>
-              )}
-            </div>
+            <div className="glass-panel h-64" />
           </div>
         </div>
-      ))}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -238,19 +234,14 @@ function DashboardContent() {
       try {
         const [agentsRes, matchesRes] = await Promise.allSettled([
           api.getAgents(),
-          api.getMatches({ limit: 6 }),
+          api.getMatches({ limit: 5 }),
         ]);
         if (agentsRes.status === "fulfilled") setAgents(agentsRes.value.agents || []);
         if (matchesRes.status === "fulfilled")
           setRecentMatches(
-            (matchesRes.value.matches || []).map((m) => ({
-              ...m,
-              id: m.id || (m as any)._id,
-            }))
+            (matchesRes.value.matches || []).map((m) => ({ ...m, id: m.id || (m as any)._id }))
           );
-      } catch {
-        /* silently handle */
-      } finally {
+      } catch { /* silently handle */ } finally {
         setLoading(false);
       }
     }
@@ -273,7 +264,6 @@ function DashboardContent() {
     return { active, queued, earnings, bestElo, wins, losses, draws, total, winRate, bestAgent };
   }, [agents]);
 
-  /* Time-based greeting */
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return t.dashboard.goodMorning;
@@ -281,563 +271,473 @@ function DashboardContent() {
     return t.dashboard.goodEvening;
   }, [t]);
 
-  /* Dynamic subtitle */
-  const subtitle = useMemo(() => {
-    if (!agents.length) return t.dashboard.readyToCompete;
-    if (stats.active > 0)
-      return `${stats.active} ${t.dashboard.matchesLive}`;
-    return `${agents.length} ${t.dashboard.agentsCompeting}`;
-  }, [agents, stats, t]);
-
-  if (loading) return <PageSpinner />;
+  if (loading) return <DashboardSkeleton />;
 
   const hasAgents = agents.length > 0;
 
   return (
-    <div className="page-container">
+    <>
+      {/* ═══════════════════════════════════════════════════
+          FIXED ANIMATED MESH GRADIENT BACKGROUND
+          ═══════════════════════════════════════════════════ */}
+      <div className="dash-glass-bg" aria-hidden="true">
+        <div className="absolute w-96 h-96 rounded-full bg-arena-primary/10 blur-[100px] animate-mesh-float"
+             style={{ top: "10%", left: "60%" }} />
+        <div className="absolute w-80 h-80 rounded-full bg-arena-accent/8 blur-[80px] animate-mesh-float"
+             style={{ top: "60%", left: "20%", animationDelay: "4s" }} />
+        <div className="absolute w-64 h-64 rounded-full bg-arena-success/5 blur-[60px] animate-mesh-float"
+             style={{ top: "30%", left: "40%", animationDelay: "8s" }} />
+      </div>
 
       {/* ═══════════════════════════════════════════════════
-          HERO BANNER
+          CONTENT LAYER
           ═══════════════════════════════════════════════════ */}
-      <div className="dash-hero p-6 sm:p-8 mb-8 opacity-0 animate-fade-up" style={{ animationFillMode: "both" }}>
-        {/* Gradient orbs */}
-        <div className="dash-hero-orb w-56 h-56 bg-arena-primary/10 -top-24 -right-14 animate-pulse-soft" />
-        <div className="dash-hero-orb w-40 h-40 bg-arena-accent/8 -bottom-14 left-6 animate-pulse-soft" style={{ animationDelay: "2s" }} />
-        <div className="dash-hero-orb w-24 h-24 bg-arena-success/6 top-4 left-1/3 animate-pulse-soft" style={{ animationDelay: "3.5s" }} />
+      <div className="dash-glass-viewport">
+        <div className="dash-glass-layout">
 
-        <div className="relative z-10">
-          {/* Top row: avatar + greeting + CTAs */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-5 mb-6">
-            {/* Avatar + greeting */}
-            <div className="flex items-center gap-4 flex-1 min-w-0">
-              <div className="relative shrink-0">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-arena-primary to-arena-accent flex items-center justify-center shadow-arena ring-4 ring-arena-primary/10">
-                  <span className="text-2xl sm:text-3xl font-extrabold text-white">{user?.username?.charAt(0).toUpperCase()}</span>
-                </div>
-                {/* Online dot */}
-                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-arena-success border-[2.5px] border-white shadow-sm" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-arena-text-bright truncate leading-tight">
-                  {greeting}, <span className="text-arena-primary">{user?.username}</span>
-                </h1>
-                <p className="text-sm text-arena-muted mt-1 flex items-center gap-1.5">
-                  {stats.active > 0 && (
-                    <span className="relative inline-flex w-2 h-2 shrink-0">
-                      <span className="absolute inset-0 rounded-full bg-arena-success animate-ping opacity-60" />
-                      <span className="relative inline-flex w-2 h-2 rounded-full bg-arena-success" />
+          {/* ═══════════════════════════════════════════════
+              LEFT RAIL — Sticky sidebar
+              ═══════════════════════════════════════════════ */}
+          <aside className="dash-glass-rail">
+
+            {/* Identity Panel */}
+            <div className="glass-panel glass-panel-highlight p-6 opacity-0 animate-slide-in-left"
+                 style={{ animationDelay: "0.05s", animationFillMode: "both" }}>
+              <div className="flex flex-col items-center text-center">
+                <div className="relative mb-4">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-arena-primary to-arena-accent flex items-center justify-center shadow-lg"
+                       style={{ boxShadow: "0 8px 30px rgba(91, 79, 207, 0.3)" }}>
+                    <span className="text-3xl font-extrabold text-white">
+                      {user?.username?.charAt(0).toUpperCase()}
                     </span>
-                  )}
-                  {subtitle}
+                  </div>
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-arena-success border-2 border-white"
+                        style={{ boxShadow: "0 0 12px rgba(5, 150, 105, 0.5)" }} />
+                </div>
+                <p className="text-[11px] text-arena-muted font-mono tracking-widest uppercase mb-1">
+                  {greeting}
                 </p>
+                <h1 className="text-xl font-display font-bold text-arena-text-bright tracking-tight">
+                  {user?.username}
+                </h1>
+                {hasAgents && (
+                  <p className="text-[11px] text-arena-muted mt-1 flex items-center gap-1.5">
+                    {stats.active > 0 && (
+                      <span className="relative inline-flex w-1.5 h-1.5">
+                        <span className="absolute inset-0 rounded-full bg-arena-success animate-ping opacity-60" />
+                        <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-arena-success" />
+                      </span>
+                    )}
+                    {stats.active > 0
+                      ? `${stats.active} ${t.dashboard.matchesLive}`
+                      : `${agents.length} ${t.dashboard.agentsCompeting}`}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* CTAs */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <Link href="/agents/new">
-                <Button>
-                  <span className="flex items-center gap-2">
+            {/* Stats cards — only shown when user has agents */}
+            {hasAgents && (
+              <>
+                {/* Win Rate */}
+                <div className="glass-panel p-5 opacity-0 animate-slide-in-left"
+                     style={{ animationDelay: "0.1s", animationFillMode: "both" }}>
+                  <p className="stat-label mb-3">{t.common.winRate}</p>
+                  <div className="flex items-center gap-4">
+                    <WinRateRing rate={stats.winRate} size={60} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2.5 text-[11px] font-mono font-semibold mb-2.5">
+                        <span className="text-arena-success">{stats.wins}<span className="text-[9px] font-normal ml-0.5 text-arena-success/60">W</span></span>
+                        <span className="text-arena-danger">{stats.losses}<span className="text-[9px] font-normal ml-0.5 text-arena-danger/60">L</span></span>
+                        <span className="text-arena-muted-light">{stats.draws}<span className="text-[9px] font-normal ml-0.5">D</span></span>
+                      </div>
+                      <WLDBar wins={stats.wins} losses={stats.losses} draws={stats.draws} height="h-1.5" />
+                      <div className="mt-2 pt-2 border-t border-arena-border-light/20">
+                        <span className="text-[9px] text-arena-muted font-mono">{t.common.matches}</span>
+                        <span className="text-sm font-bold font-mono text-arena-text-bright ml-1.5"><AnimatedNum value={stats.total} /></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Peak ELO */}
+                <div className="glass-panel p-5 opacity-0 animate-slide-in-left cursor-pointer"
+                     style={{ animationDelay: "0.15s", animationFillMode: "both" }}
+                     onClick={() => stats.bestAgent && router.push(`/agents/${stats.bestAgent.id}`)}>
+                  <p className="stat-label mb-3">PEAK {t.common.elo}</p>
+                  <div className="flex items-end justify-between">
+                    <span className="text-3xl font-extrabold font-mono glass-stat-number">
+                      <AnimatedNum value={stats.bestElo} duration={1400} />
+                    </span>
+                    {stats.bestAgent && <EloTier elo={stats.bestElo} />}
+                  </div>
+                  {stats.bestAgent && (
+                    <p className="text-[10px] text-arena-muted font-mono mt-2 truncate flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-arena-primary/30" />
+                      {stats.bestAgent.name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Earnings */}
+                <div className="glass-panel p-5 opacity-0 animate-slide-in-left"
+                     style={{ animationDelay: "0.2s", animationFillMode: "both" }}>
+                  <p className="stat-label stat-label-accent mb-3">{t.common.earnings}</p>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-extrabold font-mono text-arena-accent"
+                          style={{ textShadow: "0 0 24px rgba(232, 165, 0, 0.2), 0 0 48px rgba(232, 165, 0, 0.06)" }}>
+                      <AnimatedDecimal value={stats.earnings} duration={1400} />
+                    </span>
+                    <span className="text-[10px] text-arena-muted font-mono font-semibold mb-1.5 bg-arena-accent/8 px-1.5 py-0.5 rounded">USDC</span>
+                  </div>
+                </div>
+
+                {/* Active / Queue */}
+                <div className="glass-panel p-5 opacity-0 animate-slide-in-left cursor-pointer"
+                     style={{ animationDelay: "0.25s", animationFillMode: "both" }}
+                     onClick={() => router.push("/matchmaking")}>
+                  <p className="stat-label stat-label-success mb-3">{t.dashboard.activeMatches}</p>
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-2xl font-extrabold font-mono text-arena-text-bright">
+                      <AnimatedNum value={stats.active} />
+                    </span>
+                    {stats.active > 0 && (
+                      <span className="relative inline-flex w-2 h-2">
+                        <span className="absolute inset-0 rounded-full bg-arena-success animate-ping opacity-60" />
+                        <span className="relative inline-flex w-2 h-2 rounded-full bg-arena-success" />
+                      </span>
+                    )}
+                    <span className="text-arena-border-light text-sm">/</span>
+                    <span className="text-lg font-bold font-mono text-arena-muted-light">
+                      <AnimatedNum value={stats.queued} />
+                    </span>
+                    <span className="text-[9px] text-arena-muted-light font-mono">{t.dashboard.inQueue}</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Quick Actions */}
+            <div className="glass-panel p-4 opacity-0 animate-slide-in-left"
+                 style={{ animationDelay: "0.3s", animationFillMode: "both" }}>
+              <div className="flex flex-col gap-2">
+                <Link href="/agents/new" className="w-full">
+                  <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-arena-primary hover:bg-arena-primary-dark text-white text-sm font-semibold rounded-xl transition-all duration-300"
+                          style={{ boxShadow: "0 4px 20px rgba(91, 79, 207, 0.25)" }}>
                     <IconPlus className="w-4 h-4" />
                     {t.dashboard.createAgent}
-                  </span>
-                </Button>
-              </Link>
-              <Link href="/matchmaking">
-                <Button variant="outline">
-                  <span className="flex items-center gap-2">
+                  </button>
+                </Link>
+                <Link href="/matchmaking" className="w-full">
+                  <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-arena-bg-light hover:bg-arena-border-light/40 text-arena-text text-sm font-medium rounded-xl border border-arena-border-light/50 hover:border-arena-border-light transition-all duration-300">
                     <IconBolt className="w-4 h-4" />
                     {t.dashboard.joinQueue}
-                  </span>
-                </Button>
-              </Link>
+                  </button>
+                </Link>
+              </div>
             </div>
-          </div>
+          </aside>
 
-          {/* Stats pills */}
-          {hasAgents ? (
-            <div className="flex flex-wrap gap-2.5">
-              <div className="flex items-center gap-2 px-4 py-2 bg-white/70 backdrop-blur-sm border border-arena-border-light/60 rounded-xl">
-                <div className="w-7 h-7 rounded-lg bg-arena-primary/10 flex items-center justify-center">
-                  <IconUsers className="w-3.5 h-3.5 text-arena-primary" />
-                </div>
+          {/* ═══════════════════════════════════════════════
+              MAIN CONTENT
+              ═══════════════════════════════════════════════ */}
+          <div className="dash-glass-main">
+
+            {/* Welcome Hero Banner */}
+            <div className="glass-panel-strong glass-panel-highlight p-8 opacity-0 animate-fade-in-scale"
+                 style={{ animationDelay: "0.08s", animationFillMode: "both" }}>
+              <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-lg font-extrabold font-mono tabular-nums text-arena-text-bright leading-none">{agents.length}</span>
-                  <span className="text-[10px] text-arena-muted uppercase tracking-wider ml-1.5">{t.common.agents}</span>
+                  <h2 className="text-3xl sm:text-4xl font-display font-bold text-arena-text-bright tracking-tight mb-2">
+                    {t.dashboard.welcomeBack}{" "}
+                    <span className="bg-gradient-to-r from-arena-primary to-arena-accent bg-clip-text text-transparent">
+                      {user?.username}
+                    </span>
+                  </h2>
+                  <p className="text-sm text-arena-muted max-w-md leading-relaxed">
+                    {t.dashboard.overview}
+                  </p>
                 </div>
+                {hasAgents && (
+                  <div className="hidden sm:flex items-center gap-4">
+                    <div className="text-right bg-arena-primary/[0.04] rounded-xl px-4 py-3 border border-arena-primary/8">
+                      <p className="text-[9px] text-arena-muted font-mono uppercase tracking-wider mb-0.5">
+                        {t.common.matches}
+                      </p>
+                      <p className="text-2xl font-extrabold font-mono text-arena-primary">
+                        <AnimatedNum value={stats.total} />
+                      </p>
+                    </div>
+                    <div className="text-right bg-arena-accent/[0.04] rounded-xl px-4 py-3 border border-arena-accent/8">
+                      <p className="text-[9px] text-arena-muted font-mono uppercase tracking-wider mb-0.5">
+                        {t.dashboard.yourAgents}
+                      </p>
+                      <p className="text-2xl font-extrabold font-mono text-arena-accent">
+                        <AnimatedNum value={agents.length} />
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-white/70 backdrop-blur-sm border border-arena-border-light/60 rounded-xl">
-                <div className="w-7 h-7 rounded-lg bg-arena-success/10 flex items-center justify-center">
-                  <IconTrophy className="w-3.5 h-3.5 text-arena-success" />
-                </div>
-                <div>
-                  <span className="text-lg font-extrabold font-mono tabular-nums text-arena-success leading-none">{stats.wins}</span>
-                  <span className="text-[10px] text-arena-muted uppercase tracking-wider ml-1.5">{t.common.wins}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-white/70 backdrop-blur-sm border border-arena-border-light/60 rounded-xl">
-                <div className="w-7 h-7 rounded-lg bg-arena-accent/10 flex items-center justify-center">
-                  <IconCoin className="w-3.5 h-3.5 text-arena-accent" />
-                </div>
-                <div>
-                  <span className="text-lg font-extrabold font-mono tabular-nums text-arena-accent leading-none">{stats.earnings.toFixed(2)}</span>
-                  <span className="text-[10px] text-arena-muted uppercase tracking-wider ml-1.5">ALPH</span>
-                </div>
-              </div>
-              {stats.active > 0 && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-arena-success/5 border border-arena-success/20 rounded-xl">
-                  <span className="relative w-2.5 h-2.5">
-                    <span className="absolute inset-0 rounded-full bg-arena-success" />
-                    <span className="absolute inset-0 rounded-full bg-arena-success animate-ping opacity-50" />
-                  </span>
-                  <span className="text-xs font-semibold text-arena-success">
-                    {stats.active} {t.common.live}
-                  </span>
+
+              {/* Stat chips */}
+              {hasAgents && (
+                <div className="flex flex-wrap gap-2 mt-6 pt-6 border-t border-arena-border-light/30">
+                  <Link href="/agents">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-arena-bg-light/80 border border-arena-border-light/50 rounded-full text-[11px] font-medium text-arena-muted hover:text-arena-primary hover:border-arena-primary/20 transition-all cursor-pointer">
+                      {agents.length} {t.common.agents}
+                      <IconArrowRight className="w-3 h-3 opacity-40" />
+                    </span>
+                  </Link>
+                  <Link href="/leaderboard">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-arena-bg-light/80 border border-arena-border-light/50 rounded-full text-[11px] font-medium text-arena-muted hover:text-arena-primary hover:border-arena-primary/20 transition-all cursor-pointer">
+                      {t.dashboard.leaderboard}
+                      <IconArrowRight className="w-3 h-3 opacity-40" />
+                    </span>
+                  </Link>
+                  {stats.active > 0 && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-arena-success/8 border border-arena-success/15 rounded-full text-[11px] font-semibold text-arena-success">
+                      <span className="relative w-1.5 h-1.5">
+                        <span className="absolute inset-0 rounded-full bg-arena-success animate-ping opacity-50" />
+                        <span className="relative block w-1.5 h-1.5 rounded-full bg-arena-success" />
+                      </span>
+                      {stats.active} {t.common.live}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
-          ) : (
-            <p className="text-arena-muted text-sm">{t.dashboard.overview}</p>
-          )}
-        </div>
-      </div>
 
-      {/* ═══════════════════════════════════════════════════
-          NO-AGENTS ONBOARDING
-          ═══════════════════════════════════════════════════ */}
-      {!hasAgents && (
-        <div className="mb-8">
-          <h2 className="text-lg font-display font-semibold text-arena-text-bright mb-4 opacity-0 animate-fade-up" style={{ animationDelay: "0.1s", animationFillMode: "both" }}>
-            {t.home.howItWorks}
-          </h2>
-          <OnboardingState t={t} />
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════
-          STATS GRID
-          ═══════════════════════════════════════════════════ */}
-      {hasAgents && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <DashStat
-            label={t.dashboard.yourAgents}
-            value={agents.length}
-            icon={<IconUsers className="w-4 h-4" />}
-            accentColor="bg-arena-primary"
-            delay={0.08}
-          />
-          <DashStat
-            label={t.dashboard.activeMatches}
-            value={stats.active}
-            icon={<IconBolt className="w-4 h-4" />}
-            accentColor="bg-arena-success"
-            delay={0.12}
-          >
-            {stats.active > 0 && (
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <span className="relative w-2 h-2 live-dot">
-                  <span className="absolute inset-0 rounded-full bg-arena-success" />
-                </span>
-                <span className="text-[10px] text-arena-success font-mono uppercase tracking-wider">{t.common.live}</span>
+            {/* ═══════════════════════════════════════════════
+                ONBOARDING (no agents)
+                ═══════════════════════════════════════════════ */}
+            {!hasAgents && (
+              <div className="glass-panel-strong glass-panel-glow p-10 text-center opacity-0 animate-fade-in-scale"
+                   style={{ animationDelay: "0.15s", animationFillMode: "both" }}>
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-arena-primary/10 to-arena-accent/10 flex items-center justify-center mx-auto mb-5 animate-float"
+                     style={{ animationDuration: "4s" }}>
+                  <IconBolt className="w-8 h-8 text-arena-primary" />
+                </div>
+                <h3 className="text-2xl font-display font-bold text-arena-text-bright mb-3">
+                  Deploy Your First Agent
+                </h3>
+                <p className="text-sm text-arena-muted max-w-md mx-auto mb-6 leading-relaxed">
+                  Create an AI agent, enter the arena, and start competing against other players for USDC.
+                </p>
+                <div className="flex items-center justify-center gap-2 mb-8 flex-wrap">
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-arena-success/8 text-arena-success text-[11px] font-semibold border border-arena-success/15">
+                    <IconCheck className="w-3 h-3" /> Account Created
+                  </span>
+                  <span className="w-6 h-px bg-arena-border-light hidden sm:block" />
+                  <span className="px-3 py-1.5 rounded-full bg-arena-primary/8 text-arena-primary text-[11px] font-semibold border border-arena-primary/15 animate-glow-breath">
+                    Create Agent
+                  </span>
+                  <span className="w-6 h-px bg-arena-border-light hidden sm:block" />
+                  <span className="px-3 py-1.5 rounded-full bg-arena-bg-light text-arena-muted text-[11px] border border-arena-border-light/50">
+                    Compete
+                  </span>
+                </div>
+                <Link href="/agents/new">
+                  <button className="px-6 py-3 bg-arena-primary hover:bg-arena-primary-dark text-white font-semibold rounded-xl transition-all"
+                          style={{ boxShadow: "0 4px 25px rgba(91, 79, 207, 0.3)" }}>
+                    {t.dashboard.createAgent}
+                  </button>
+                </Link>
               </div>
             )}
-          </DashStat>
-          <DashStat
-            label={t.dashboard.inQueue}
-            value={stats.queued}
-            icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-            accentColor="bg-amber-400"
-            delay={0.16}
-          />
-          <DashStat
-            label={t.dashboard.totalEarnings}
-            value={stats.earnings.toFixed(2)}
-            sub="ALPH"
-            icon={<IconCoin className="w-4 h-4" />}
-            accentColor="bg-arena-accent"
-            delay={0.2}
-          />
-        </div>
-      )}
 
-      {/* ═══════════════════════════════════════════════════
-          PERFORMANCE + BEST AGENT (2-col)
-          ═══════════════════════════════════════════════════ */}
-      {hasAgents && stats.total > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-8">
-          {/* Overall Performance — 3 cols wide */}
-          <div
-            className="lg:col-span-3 bg-white border border-arena-border-light rounded-2xl p-6 shadow-arena-sm opacity-0 animate-fade-up"
-            style={{ animationDelay: "0.18s", animationFillMode: "both" }}
-          >
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-xs text-arena-muted uppercase tracking-widest font-mono">
-                {t.leaderboard.overallWinRate}
-              </h3>
-              <div className="flex items-center gap-1.5 text-[10px] font-mono text-arena-muted">
-                <div className="w-2 h-2 rounded-full bg-arena-success" />
-                {stats.wins}W
-                <div className="w-2 h-2 rounded-full bg-arena-muted-light/60 ml-1" />
-                {stats.draws}D
-                <div className="w-2 h-2 rounded-full bg-arena-danger/60 ml-1" />
-                {stats.losses}L
-              </div>
-            </div>
-
-            <div className="flex items-center gap-8">
-              <WinRateRing rate={stats.winRate} />
-              <div className="flex-1 space-y-4">
-                {/* WLD Bar */}
-                <div>
-                  <WLDBar wins={stats.wins} losses={stats.losses} draws={stats.draws} height="h-3" />
-                  <div className="flex items-center justify-between mt-2 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-sm bg-arena-success" />
-                      <span className="font-mono font-semibold text-arena-text-bright">{stats.wins}</span>
-                      <span className="text-arena-muted">{t.common.wins}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-sm bg-arena-muted-light/60" />
-                      <span className="font-mono font-semibold text-arena-text-bright">{stats.draws}</span>
-                      <span className="text-arena-muted">{t.common.draws}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-sm bg-arena-danger/60" />
-                      <span className="font-mono font-semibold text-arena-text-bright">{stats.losses}</span>
-                      <span className="text-arena-muted">{t.common.losses}</span>
-                    </div>
-                  </div>
+            {/* ═══════════════════════════════════════════════
+                YOUR AGENTS — Horizontal Scroll Strip
+                ═══════════════════════════════════════════════ */}
+            {hasAgents && (
+              <div className="opacity-0 animate-fade-up"
+                   style={{ animationDelay: "0.12s", animationFillMode: "both" }}>
+                <div className="flex items-center justify-between mb-4 px-1">
+                  <h2 className="text-lg font-display font-bold text-arena-text-bright">
+                    {t.dashboard.yourAgents}
+                  </h2>
+                  <Link href="/agents" className="text-xs text-arena-muted hover:text-arena-primary transition-colors flex items-center gap-1">
+                    {t.common.viewAll} <IconArrowRight className="w-3 h-3" />
+                  </Link>
                 </div>
 
-                {/* Quick stats row */}
-                <div className="grid grid-cols-3 gap-3 pt-3 border-t border-arena-border-light/50">
-                  <div>
-                    <div className="text-[10px] text-arena-muted uppercase tracking-wider">{t.common.matches}</div>
-                    <div className="text-lg font-bold text-arena-text-bright font-mono tabular-nums">{stats.total}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-arena-muted uppercase tracking-wider">Best {t.common.elo}</div>
-                    <div className="text-lg font-bold text-arena-primary font-mono tabular-nums">{formatElo(stats.bestElo)}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-arena-muted uppercase tracking-wider">{t.common.earnings}</div>
-                    <div className="text-lg font-bold text-arena-accent font-mono tabular-nums">{stats.earnings.toFixed(2)}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+                <div className="dash-agent-strip">
+                  {agents.slice(0, 6).map((agent, i) => {
+                    const w = agent.stats?.wins || 0;
+                    const l = agent.stats?.losses || 0;
+                    const d = agent.stats?.draws || 0;
+                    const isBest = stats.bestAgent?.id === agent.id;
+                    const isLive = agent.status === "in_match";
+                    const isIdle = agent.status !== "in_match" && agent.status !== "queued";
 
-          {/* Best Agent Spotlight — 2 cols */}
-          {stats.bestAgent && (
-            <div
-              className="lg:col-span-2 bg-white border border-arena-border-light rounded-2xl p-6 shadow-arena-sm cursor-pointer opacity-0 animate-fade-up group hover:shadow-arena-lg hover:border-arena-primary/30 transition-all"
-              style={{ animationDelay: "0.22s", animationFillMode: "both" }}
-              onClick={() => router.push(`/agents/${stats.bestAgent!.id}`)}
-            >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-xs text-arena-muted uppercase tracking-widest font-mono">Top Agent</h3>
-                <IconStar className="w-5 h-5 text-arena-accent" />
-              </div>
+                    return (
+                      <div
+                        key={agent.id}
+                        className={`group glass-panel glass-panel-glow p-5 cursor-pointer opacity-0 animate-fade-in-scale overflow-hidden ${
+                          isBest ? "ring-1 ring-arena-primary/25" : ""
+                        }`}
+                        style={{ animationDelay: `${0.15 + i * 0.06}s`, animationFillMode: "both" }}
+                        onClick={() => router.push(`/agents/${agent.id}`)}
+                      >
+                        {/* Subtle left accent bar */}
+                        <div className={`absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full transition-all duration-300 ${
+                          isLive ? "bg-arena-success" : isBest ? "bg-gradient-to-b from-arena-primary to-arena-accent" : "bg-arena-primary/0 group-hover:bg-arena-primary/30"
+                        }`} />
 
-              <div className="flex items-center gap-4 mb-5">
-                <Avatar
-                  name={stats.bestAgent.name}
-                  size="w-14 h-14"
-                  textSize="text-xl"
-                  gradient="from-arena-primary to-arena-accent"
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-display font-bold text-arena-text-bright text-lg truncate group-hover:text-arena-primary transition-colors">
-                      {stats.bestAgent.name}
-                    </h4>
-                    <Badge status={stats.bestAgent.status} />
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5 text-xs text-arena-muted">
-                    {stats.bestAgent.type === "openclaw" && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-mono bg-purple-50 text-purple-600 border border-purple-200 rounded">OC</span>
-                    )}
-                    {stats.bestAgent.gameTypes.map((gt) => (
-                      <span key={gt} className="capitalize font-mono">{gt}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                        {/* Agent header */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="relative">
+                              <Avatar name={agent.name} size="w-11 h-11" textSize="text-sm"
+                                      gradient={isBest ? "from-arena-primary to-arena-accent" : "from-arena-primary to-arena-primary-dark"} />
+                              {isLive && (
+                                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-arena-success border-2 border-white shadow-sm"
+                                      style={{ boxShadow: "0 0 8px rgba(5, 150, 105, 0.4)" }}>
+                                  <span className="absolute inset-0 rounded-full bg-arena-success animate-ping opacity-50" />
+                                </span>
+                              )}
+                              {isIdle && (
+                                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-arena-muted-light border-2 border-white status-idle-pulse" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-sm text-arena-text-bright truncate flex items-center gap-1.5">
+                                {isBest && <IconStar className="w-3.5 h-3.5 text-arena-accent shrink-0" />}
+                                {agent.name}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[11px] text-arena-text font-mono font-semibold">{formatElo(agent.elo)}</span>
+                                <EloTier elo={agent.elo} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
 
-              <div className="grid grid-cols-3 gap-3 pt-4 border-t border-arena-border-light/60">
-                <div>
-                  <div className="text-[10px] text-arena-muted uppercase tracking-wider">{t.common.elo}</div>
-                  <div className="text-xl font-extrabold text-arena-primary font-mono tabular-nums">{formatElo(stats.bestAgent.elo)}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-arena-muted uppercase tracking-wider">{t.common.winRate}</div>
-                  <div className="text-xl font-extrabold text-arena-text-bright font-mono tabular-nums">{formatWinRate(stats.bestAgent.stats?.winRate || 0)}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-arena-muted uppercase tracking-wider">{t.common.earnings}</div>
-                  <div className="text-xl font-extrabold text-arena-accent font-mono tabular-nums">{(stats.bestAgent.stats?.totalEarnings || 0).toFixed(2)}</div>
-                </div>
-              </div>
+                        {/* Stats section */}
+                        <div className="pt-3 border-t border-arena-border-light/20">
+                          <WLDBar wins={w} losses={l} draws={d} height="h-1.5" />
+                          <div className="flex items-center justify-between mt-3">
+                            <div className="flex items-center gap-2 text-[11px] font-mono font-semibold">
+                              <span className="text-arena-success">{w}<span className="text-[9px] font-normal text-arena-success/60 ml-0.5">W</span></span>
+                              <span className="text-arena-danger">{l}<span className="text-[9px] font-normal text-arena-danger/60 ml-0.5">L</span></span>
+                              <span className="text-arena-muted-light">{d}<span className="text-[9px] font-normal ml-0.5">D</span></span>
+                            </div>
+                            <MiniRing rate={agent.stats?.winRate || 0} size={28} />
+                          </div>
+                        </div>
 
-              {/* View arrow */}
-              <div className="flex items-center justify-end mt-4 text-xs text-arena-muted group-hover:text-arena-primary transition-colors">
-                <span className="mr-1">View agent</span>
-                <IconArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════
-          QUICK ACTIONS
-          ═══════════════════════════════════════════════════ */}
-      {hasAgents && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          {[
-            {
-              href: "/agents/new",
-              icon: <IconPlus />,
-              label: t.dashboard.createAgent,
-              desc: t.dashboard.deployNew,
-              accent: "bg-arena-primary/10 text-arena-primary",
-              hoverBorder: "hover:border-arena-primary/40",
-              delay: 0.24,
-            },
-            {
-              href: "/matchmaking",
-              icon: <IconBolt />,
-              label: t.dashboard.joinQueue,
-              desc: t.dashboard.enterMatchmaking,
-              accent: "bg-arena-accent/10 text-arena-accent",
-              hoverBorder: "hover:border-arena-accent/40",
-              delay: 0.28,
-            },
-            {
-              href: "/leaderboard",
-              icon: <IconChart />,
-              label: t.dashboard.leaderboard,
-              desc: t.dashboard.viewRankings,
-              accent: "bg-arena-success/10 text-arena-success",
-              hoverBorder: "hover:border-arena-success/40",
-              delay: 0.32,
-            },
-          ].map((action) => (
-            <Link key={action.href} href={action.href}>
-              <div
-                className={`bg-white border border-arena-border-light rounded-xl p-5 shadow-arena-sm group cursor-pointer transition-all duration-200 hover:shadow-arena hover:-translate-y-0.5 ${action.hoverBorder} opacity-0 animate-fade-up`}
-                style={{ animationDelay: `${action.delay}s`, animationFillMode: "both" }}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${action.accent}`}>
-                    {action.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-arena-text-bright group-hover:text-arena-primary transition-colors">{action.label}</div>
-                    <div className="text-xs text-arena-muted mt-0.5">{action.desc}</div>
-                  </div>
-                  <IconArrowRight className="w-4 h-4 text-arena-muted-light group-hover:text-arena-primary group-hover:translate-x-1 transition-all" />
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════
-          YOUR AGENTS
-          ═══════════════════════════════════════════════════ */}
-      {hasAgents && (
-        <div className="mb-8 opacity-0 animate-fade-up" style={{ animationDelay: "0.3s", animationFillMode: "both" }}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-display font-bold text-arena-text-bright">{t.dashboard.yourAgents}</h2>
-            <Link href="/agents">
-              <Button variant="ghost" size="sm">
-                <span className="flex items-center gap-1">
-                  {t.common.viewAll}
-                  <IconArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </Button>
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {agents.slice(0, 6).map((agent, i) => {
-              const w = agent.stats?.wins || 0;
-              const l = agent.stats?.losses || 0;
-              const d = agent.stats?.draws || 0;
-              const isBest = stats.bestAgent?.id === agent.id;
-              const isLive = agent.status === "in_match";
-
-              return (
-                <div
-                  key={agent.id}
-                  className={`bg-white border rounded-xl p-5 shadow-arena-sm cursor-pointer transition-all duration-200 hover:shadow-arena-lg hover:-translate-y-0.5 opacity-0 animate-fade-up ${
-                    isBest ? "border-arena-primary/30 ring-1 ring-arena-primary/10" : "border-arena-border-light hover:border-arena-primary/30"
-                  }`}
-                  style={{ animationDelay: `${0.35 + i * 0.06}s`, animationFillMode: "both" }}
-                  onClick={() => router.push(`/agents/${agent.id}`)}
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative">
-                        <Avatar
-                          name={agent.name}
-                          size="w-10 h-10"
-                          textSize="text-sm"
-                          gradient={isBest ? "from-arena-primary to-arena-accent" : "from-arena-primary to-arena-primary-dark"}
-                        />
-                        {isLive && (
-                          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-arena-success border-2 border-white">
-                            <span className="absolute inset-0 rounded-full bg-arena-success animate-ping opacity-60" />
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-semibold text-arena-text-bright truncate text-sm leading-tight">
-                          {isBest && <IconStar className="w-3.5 h-3.5 text-arena-accent inline mr-1 -mt-0.5" />}
-                          {agent.name}
-                        </h4>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {agent.type === "openclaw" && (
-                            <span className="px-1 py-0 text-[9px] font-mono bg-purple-50 text-purple-500 rounded">OC</span>
-                          )}
-                          <span className="text-[10px] text-arena-muted font-mono">{formatElo(agent.elo)} ELO</span>
+                        {/* Hover arrow indicator */}
+                        <div className="absolute right-4 top-5 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-0.5">
+                          <IconArrowRight className="w-4 h-4 text-arena-muted-light" />
                         </div>
                       </div>
-                    </div>
-                    <Badge status={agent.status} />
-                  </div>
-
-                  {/* WLD Bar */}
-                  <WLDBar wins={w} losses={l} draws={d} height="h-1.5" />
-
-                  {/* Stats */}
-                  <div className="flex items-center justify-between mt-3">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-arena-success font-mono font-semibold">{w}W</span>
-                      <span className="text-arena-danger/70 font-mono font-semibold">{l}L</span>
-                      <span className="text-arena-muted font-mono">{d}D</span>
-                    </div>
-                    <MiniRing rate={agent.stats?.winRate || 0} size={28} />
-                  </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════
-          RECENT MATCHES (Timeline)
-          ═══════════════════════════════════════════════════ */}
-      <div className="opacity-0 animate-fade-up" style={{ animationDelay: "0.4s", animationFillMode: "both" }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-display font-bold text-arena-text-bright">{t.dashboard.recentMatches}</h2>
-          <Link href="/matches">
-            <Button variant="ghost" size="sm">
-              <span className="flex items-center gap-1">
-                {t.common.viewAll}
-                <IconArrowRight className="w-3.5 h-3.5" />
-              </span>
-            </Button>
-          </Link>
-        </div>
-
-        {recentMatches.length === 0 ? (
-          <div className="bg-white border border-arena-border-light rounded-2xl shadow-arena-sm">
-            <div className="text-center py-16 px-6">
-              <div className="w-16 h-16 rounded-2xl bg-arena-primary/10 flex items-center justify-center mx-auto mb-4 animate-float">
-                <IconBolt className="w-8 h-8 text-arena-primary" />
               </div>
-              <p className="text-arena-text-bright font-semibold mb-1">{t.dashboard.noMatchesYet}</p>
-              <p className="text-sm text-arena-muted mb-6 max-w-xs mx-auto">
-                {hasAgents ? t.matchmaking.subtitle : t.agents.noAgentsDesc}
-              </p>
-              <Link href={hasAgents ? "/matchmaking" : "/agents/new"}>
-                <Button variant="secondary" size="sm">
-                  {hasAgents ? t.dashboard.startFirst : t.dashboard.createAgent}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-0">
-            {recentMatches.map((match, i) => {
-              const agentsArr = normalizeMatchAgents(match.agents);
-              const myAgent = agentsArr.find((a) => agents.some((ag) => ag.id === a.agentId));
-              const isWinner = myAgent && match.winnerId === myAgent.agentId;
-              const isLoss = myAgent && match.status === "completed" && match.winnerId && match.winnerId !== myAgent.agentId;
-              const isLast = i === recentMatches.length - 1;
-              const isActive = match.status === "active";
+            )}
 
-              const dotColor = isActive
-                ? "bg-arena-success"
-                : isWinner
-                ? "bg-arena-success"
-                : isLoss
-                ? "bg-arena-danger/70"
-                : "bg-arena-border-light";
-
-              return (
-                <Link key={match.id} href={`/matches/${match.id}`}>
-                  <div
-                    className="flex gap-4 group opacity-0 animate-fade-up"
-                    style={{ animationDelay: `${0.45 + i * 0.06}s`, animationFillMode: "both" }}
-                  >
-                    {/* Timeline */}
-                    <div className="flex flex-col items-center pt-5 shrink-0">
-                      <div className={`timeline-dot ${dotColor}`}>
-                        {isActive && (
-                          <span className="absolute inset-0 rounded-full bg-arena-success animate-ping opacity-40" />
-                        )}
-                      </div>
-                      {!isLast && <div className="timeline-line" style={{ position: "relative", width: 2, flex: 1, minHeight: 20 }} />}
-                    </div>
-
-                    {/* Card */}
-                    <div className="bg-white border border-arena-border-light rounded-xl p-4 shadow-arena-sm flex-1 mb-3 transition-all duration-200 group-hover:shadow-arena group-hover:border-arena-primary/30">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <Badge status={match.status} />
-                          {match.status === "completed" && myAgent && (
-                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                              isWinner
-                                ? "bg-arena-success/12 text-arena-success"
-                                : isLoss
-                                ? "bg-arena-danger/12 text-arena-danger"
-                                : "bg-arena-muted-light/15 text-arena-muted"
-                            }`}>
-                              {isWinner ? t.common.won : isLoss ? t.common.lost : t.common.draws}
-                            </span>
-                          )}
-                          <span className="text-sm font-medium text-arena-text-bright">
-                            {agentsArr.map((a) => a.agentName).join(" vs ") || "Unknown"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-[11px] text-arena-muted">
-                          <span className="capitalize font-mono">{match.gameType}</span>
-                          {myAgent?.eloChange !== undefined && myAgent.eloChange !== null && (
-                            <span className={`font-mono font-semibold ${
-                              myAgent.eloChange > 0 ? "text-arena-success" : myAgent.eloChange < 0 ? "text-arena-danger" : "text-arena-muted"
-                            }`}>
-                              {myAgent.eloChange > 0 ? "+" : ""}{myAgent.eloChange} ELO
-                            </span>
-                          )}
-                          <span className="font-mono">{match.stakeAmount} ALPH</span>
-                          <span>{formatRelativeTime(match.createdAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            {/* ═══════════════════════════════════════════════
+                RECENT MATCHES
+                ═══════════════════════════════════════════════ */}
+            <div className="opacity-0 animate-fade-up"
+                 style={{ animationDelay: "0.2s", animationFillMode: "both" }}>
+              <div className="flex items-center justify-between mb-4 px-1">
+                <h2 className="text-lg font-display font-bold text-arena-text-bright">
+                  {t.dashboard.recentMatches}
+                </h2>
+                <Link href="/matches" className="text-xs text-arena-muted hover:text-arena-primary transition-colors flex items-center gap-1">
+                  {t.common.viewAll} <IconArrowRight className="w-3 h-3" />
                 </Link>
-              );
-            })}
+              </div>
+
+              {recentMatches.length === 0 ? (
+                <div className="glass-panel-strong p-10 text-center">
+                  <div className="w-12 h-12 rounded-xl bg-arena-primary/8 flex items-center justify-center mx-auto mb-3">
+                    <IconBolt className="w-6 h-6 text-arena-primary" />
+                  </div>
+                  <p className="text-sm text-arena-text-bright font-medium mb-1">{t.dashboard.noMatchesYet}</p>
+                  <p className="text-xs text-arena-muted mb-5 max-w-xs mx-auto">
+                    {hasAgents ? t.matchmaking.subtitle : t.agents.noAgentsDesc}
+                  </p>
+                  <Link href={hasAgents ? "/matchmaking" : "/agents/new"}>
+                    <Button size="sm">{hasAgents ? t.dashboard.startFirst : t.dashboard.createAgent}</Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="glass-panel overflow-hidden">
+                  {recentMatches.map((match, i) => {
+                    const agentsArr = normalizeMatchAgents(match.agents);
+                    const myAgent = agentsArr.find((a) => agents.some((ag) => ag.id === a.agentId));
+                    const isWinner = myAgent && match.winnerId === myAgent.agentId;
+                    const isLoss = myAgent && match.status === "completed" && match.winnerId && match.winnerId !== myAgent.agentId;
+                    const isActive = match.status === "active";
+                    const isLast = i === recentMatches.length - 1;
+
+                    return (
+                      <div key={match.id}>
+                        <Link href={`/matches/${match.id}`}>
+                          <div
+                            className="flex items-center gap-4 px-5 py-4 hover:bg-arena-card-hover transition-colors cursor-pointer group opacity-0 animate-fade-up"
+                            style={{ animationDelay: `${0.25 + i * 0.05}s`, animationFillMode: "both" }}
+                          >
+                            {/* Result indicator */}
+                            <div className={`w-1 self-stretch rounded-full shrink-0 ${
+                              isActive ? "bg-arena-success" : isWinner ? "bg-arena-success" : isLoss ? "bg-arena-danger/50" : "bg-arena-border-light"
+                            }`}
+                            style={isActive ? { boxShadow: "0 0 8px rgba(5, 150, 105, 0.4)" } : {}} />
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-sm font-medium text-arena-text-bright truncate">
+                                  {agentsArr.map((a) => a.agentName).join(" vs ") || "Unknown"}
+                                </span>
+                                {isActive && (
+                                  <span className="relative flex w-2 h-2 shrink-0">
+                                    <span className="absolute inset-0 rounded-full bg-arena-success animate-ping opacity-60" />
+                                    <span className="relative block w-2 h-2 rounded-full bg-arena-success" />
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[10px] text-arena-muted font-mono">
+                                <span className="capitalize">{match.gameType}</span>
+                                <span className="opacity-30">/</span>
+                                <span>{match.stakeAmount} USDC</span>
+                                <span className="opacity-30">/</span>
+                                <span>{formatRelativeTime(match.createdAt)}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2.5 shrink-0">
+                              {match.status === "completed" && myAgent && (
+                                <span className={`text-[10px] font-semibold font-mono px-2 py-0.5 rounded-full ${
+                                  isWinner ? "bg-arena-success/8 text-arena-success" : isLoss ? "bg-arena-danger/8 text-arena-danger" : "bg-arena-muted/8 text-arena-muted"
+                                }`}>
+                                  {isWinner ? t.common.won : isLoss ? t.common.lost : t.common.draws}
+                                </span>
+                              )}
+                              {myAgent?.eloChange !== undefined && myAgent.eloChange !== null && myAgent.eloChange !== 0 && (
+                                <span className={`text-xs font-mono font-bold tabular-nums ${
+                                  myAgent.eloChange > 0 ? "text-arena-success" : "text-arena-danger"
+                                }`}>
+                                  {myAgent.eloChange > 0 ? "+" : ""}{myAgent.eloChange}
+                                </span>
+                              )}
+                              <IconArrowRight className="w-3.5 h-3.5 text-arena-muted-light opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                            </div>
+                          </div>
+                        </Link>
+                        {!isLast && <div className="glass-divider mx-5" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
